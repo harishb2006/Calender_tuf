@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
-import { 
-  format, 
-  addMonths, 
-  subMonths, 
-  startOfMonth, 
+import {
+  format,
+  startOfMonth,
   endOfMonth,
   startOfWeek,
   endOfWeek,
-  eachDayOfInterval, 
-  isSameMonth, 
+  eachDayOfInterval,
+  isSameMonth,
   isSameDay,
   isBefore,
   isAfter,
@@ -23,13 +21,13 @@ export type DateRange = {
 
 type CalendarGridProps = {
   viewDate: Date;
-  setViewDate: (date: Date) => void;
+  onPaginate: (direction: number) => void;
   selection: DateRange;
   setSelection: (range: DateRange) => void;
   allNotes: Record<string, string>;
 };
 
-export default function CalendarGrid({ viewDate, setViewDate, selection, setSelection, allNotes }: CalendarGridProps) {
+export default function CalendarGrid({ viewDate, onPaginate, selection, setSelection, allNotes }: CalendarGridProps) {
   const [hoverDate, setHoverDate] = useState<Date | null>(null);
   const [showMarkers, setShowMarkers] = useState(true);
 
@@ -78,9 +76,9 @@ export default function CalendarGrid({ viewDate, setViewDate, selection, setSele
     const isCurrentMonth = isSameMonth(day, monthStart);
     const isStart = selection.start && isSameDay(day, selection.start);
     const isEnd = selection.end && isSameDay(day, selection.end);
-    
+
     // Calculate if it's "in between"
-    const isBetween = 
+    const isBetween =
       (selection.start && selection.end && isAfter(day, selection.start) && isBefore(day, selection.end)) ||
       (selection.start && !selection.end && hoverDate && isAfter(day, selection.start) && isBefore(day, hoverDate)) ||
       (selection.start && !selection.end && hoverDate && isSameDay(day, hoverDate));
@@ -111,17 +109,17 @@ export default function CalendarGrid({ viewDate, setViewDate, selection, setSele
   };
 
   return (
-    <div className="w-full mx-auto select-none flex flex-col h-full">
+    <div className="w-full mx-auto select-none flex flex-col h-full bg-transparent">
       {/* Navigation Header */}
-      <div className="flex items-center justify-between mb-8 px-2 pt-2">
-        <button 
-          onClick={() => setViewDate(subMonths(viewDate, 1))}
+      <div className="flex items-center justify-between mb-8 px-2 pt-2 relative z-20">
+        <button
+          onClick={() => onPaginate(-1)}
           className="w-10 h-10 flex items-center justify-center rounded-full text-2xl font-light text-slate-800 hover:bg-slate-100 transition-colors"
           title="Previous Month"
         >
           ‹
         </button>
-        
+
         <div className="text-center flex-shrink-0">
           <h2 className="text-2xl font-bold tracking-tight text-slate-800 uppercase">
             {format(viewDate, 'MMMM')}
@@ -131,8 +129,8 @@ export default function CalendarGrid({ viewDate, setViewDate, selection, setSele
           </p>
         </div>
 
-        <button 
-          onClick={() => setViewDate(addMonths(viewDate, 1))}
+        <button
+          onClick={() => onPaginate(1)}
           className="w-10 h-10 flex items-center justify-center rounded-full text-2xl font-light text-slate-800 hover:bg-slate-100 transition-colors"
           title="Next Month"
         >
@@ -140,83 +138,84 @@ export default function CalendarGrid({ viewDate, setViewDate, selection, setSele
         </button>
       </div>
 
-      {/* Weekday Labels */}
-      <div className="grid grid-cols-7 mb-4">
-        {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((day, i) => (
-          <div key={i} className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            {day}
-          </div>
-        ))}
-      </div>
-
-      {/* The Grid */}
-      <div className="grid grid-cols-7 gap-y-2 place-items-center mb-6">
-        {calendarDays.map((day, idx) => {
-          // Check if this day intersects with any note range
-          const hasNote = Object.keys(allNotes).some(key => {
-            if (!key.includes('_to_')) {
-              // Properly parse the string to avoid timezone parsing issues with 'new Date()'
-              const [y, m, d] = key.split('-').map(Number);
-              const noteDate = new Date(y, m - 1, d);
-              return isSameDay(day, noteDate);
-            }
-            try {
-              const [startStr, endStr] = key.split('_to_');
-              const [sy, sm, sd] = startStr.split('-').map(Number);
-              const [ey, em, ed] = endStr.split('-').map(Number);
-              return isWithinInterval(day, { 
-                start: new Date(sy, sm - 1, sd), 
-                end: new Date(ey, em - 1, ed, 23, 59, 59) 
-              });
-            } catch {
-              return false;
-            }
-          });
-
-          return (
-            <div 
-              key={idx} 
-              onClick={() => handleDateClick(day)}
-              onMouseEnter={() => handleDateHover(day)}
-              className={getDayClasses(day)}
-            >
-              <div className="relative flex items-center justify-center w-full h-full">
-                <span>{format(day, 'd')}</span>
-                {hasNote && showMarkers && (
-                  <div className="absolute top-1 right-2 w-1.5 h-1.5 bg-amber-400 rounded-full shadow-sm" />
-                )}
-              </div>
+      <div className="relative flex-grow w-full">
+        {/* Weekday Labels */}
+        <div className="grid grid-cols-7 mb-4">
+          {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((day, i) => (
+            <div key={i} className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              {day}
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
 
-      {/* Summary Footer */}
-      <div className="mt-auto flex flex-col pt-4 border-t border-slate-100 gap-3">
-        <label className="flex items-center gap-2 cursor-pointer select-none self-end text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors">
-          <input 
-            type="checkbox" 
-            checked={showMarkers} 
-            onChange={(e) => setShowMarkers(e.target.checked)}
-            className="w-3.5 h-3.5 rounded text-amber-500 focus:ring-amber-500 border-slate-300 cursor-pointer"
-          />
-          Show Note Markers
-        </label>
-        
-        {(selection.start || selection.end) && (
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-600 font-medium">
-              {selection.start && !selection.end && `Selecting: ${format(selection.start, 'MMM do')} — ...`}
-              {selection.start && selection.end && `Selected: ${format(selection.start, 'MMM do')} — ${format(selection.end, 'MMM do')}`}
-            </p>
-            <button 
-              onClick={handleClearSelection}
-              className="text-xs font-semibold text-slate-400 hover:text-red-500 transition-colors px-2 py-1 rounded bg-slate-50 hover:bg-red-50"
-            >
-              Clear Selection
-            </button>
-          </div>
-        )}
+        {/* The Grid */}
+        <div className="grid grid-cols-7 gap-y-2 place-items-center mb-6">
+          {calendarDays.map((day, idx) => {
+            // Check if this day intersects with any note range
+            const hasNote = Object.keys(allNotes).some(key => {
+              if (!key.includes('_to_')) {
+                const [y, m, d] = key.split('-').map(Number);
+                const noteDate = new Date(y, m - 1, d);
+                return isSameDay(day, noteDate);
+              }
+              try {
+                const [startStr, endStr] = key.split('_to_');
+                const [sy, sm, sd] = startStr.split('-').map(Number);
+                const [ey, em, ed] = endStr.split('-').map(Number);
+                return isWithinInterval(day, {
+                  start: new Date(sy, sm - 1, sd),
+                  end: new Date(ey, em - 1, ed, 23, 59, 59)
+                });
+              } catch {
+                return false;
+              }
+            });
+
+            return (
+              <div
+                key={idx}
+                onClick={() => handleDateClick(day)}
+                onMouseEnter={() => handleDateHover(day)}
+                className={getDayClasses(day)}
+              >
+                <div className="relative flex items-center justify-center w-full h-full">
+                  <span>{format(day, 'd')}</span>
+                  {hasNote && showMarkers && (
+                    <div className="absolute top-1 right-2 w-1.5 h-1.5 bg-amber-400 rounded-full shadow-sm" />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Summary Footer tied to flip page */}
+        <div className="mt-auto flex flex-col pt-4 border-t border-slate-100 gap-3">
+          <label className="flex items-center gap-2 cursor-pointer select-none self-end text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors">
+            <input
+              type="checkbox"
+              checked={showMarkers}
+              onChange={(e) => setShowMarkers(e.target.checked)}
+              className="w-3.5 h-3.5 rounded text-amber-500 focus:ring-amber-500 border-slate-300 cursor-pointer"
+            />
+            Show Note Markers
+          </label>
+
+          {(selection.start || selection.end) && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-slate-600 font-medium">
+                {selection.start && !selection.end && `Selecting: ${format(selection.start, 'MMM do')} — ...`}
+                {selection.start && selection.end && `Selected: ${format(selection.start, 'MMM do')} — ${format(selection.end, 'MMM do')}`}
+              </p>
+              <button
+                onClick={handleClearSelection}
+                className="text-xs font-semibold text-slate-400 hover:text-red-500 transition-colors px-2 py-1 rounded bg-slate-50 hover:bg-red-50"
+              >
+                Clear Selection
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
