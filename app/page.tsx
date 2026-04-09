@@ -130,7 +130,7 @@ const Page = () => {
             </div>
 
             {/* Right Side: Image Card */}
-            <div className="w-full md:w-1/2 min-h-[500px] md:min-h-full z-10">
+            <div className="hidden md:block md:w-1/2 md:min-h-full z-10">
               <CalendarImageCard viewDate={viewDate} />
             </div>
           </motion.div>
